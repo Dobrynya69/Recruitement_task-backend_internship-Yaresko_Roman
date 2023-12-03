@@ -44,11 +44,12 @@ class CommandsExecuter:
 
 
     def _create_database(self):
-        if not os.path.exists(f"{management.BASE_DIR}/database/database.db"):
-            connection = sqlite3.connect(f"{management.BASE_DIR}/database/database.db")
+        if not os.path.exists(f"{management.BASE_DIR}/database.sqlite"):
+            connection = sqlite3.connect(f"{management.BASE_DIR}/database.sqlite")
             cursor = connection.cursor()
             self._create_database_tables(cursor)
-            parser = DataParser(cursor)
+            connection.commit()
+            parser = DataParser(connection)
             parser.parse()
             print("Database has been created")
         else:
@@ -60,8 +61,8 @@ class CommandsExecuter:
                        CREATE TABLE IF NOT EXISTS
                        parents(
                            firstname CHAR(255),
-                           phone_number INTEGER UNIQUE,
-                           email VARCHAR(255) PRIMARY KEY,
+                           phone_number INTEGER PRIMARY KEY,
+                           email VARCHAR(255) UNIQUE,
                            password VARCHAR(255),
                            role CHAR(255),
                            created_at DATETIME
@@ -72,29 +73,76 @@ class CommandsExecuter:
                            child_id INTEGER PRIMARY KEY,
                            age INTEGER,
                            name CHAR(255),
-                           parent_email VARCHAR(255),
-                           FOREIGN KEY(parent_email) REFERENCES parents(email)
+                           parent_number INTEGER,
+                           FOREIGN KEY(parent_number) REFERENCES parents(phone_number)
                         );""")
 
 
 class DataParser:
-    def __init__(self, cursor: sqlite3.Cursor, *args, **kwargs):
-        self.cursor = cursor
+    def __init__(self, connection: sqlite3.Connection, *args, **kwargs):
+        self.connection = connection
+        self.cursor = connection.cursor()
 
     def parse(self):
-        dictionary_data = self._get_dictionary_data()
-        self._insert_db(dictionary_data["parents"])
-        self._insert_db(dictionary_data["children"])
+        dictionary_data = self.get_dictionary_data()
+        self._insert_db(dictionary_data)
 
 
-    def _get_dictionary_data(self):
+    def get_dictionary_data(self):
         dictionary_data = []
         dictionary_data += self._parse_csv(f"{management.BASE_DIR}/data/users_1.csv")
         dictionary_data += self._parse_csv(f"{management.BASE_DIR}/data/users_2.csv")
         dictionary_data += self._parse_xml(f"{management.BASE_DIR}/data/users_1.xml")
         dictionary_data += self._parse_xml(f"{management.BASE_DIR}/data/users_2.xml")
         dictionary_data += self._parse_json(f"{management.BASE_DIR}/data/users.json")
-        print(dictionary_data)
+        dictionary_data = self._validate_dictionary_data(dictionary_data)
+        dictionary_data = self._separate_dictionaey_data(dictionary_data)
+        return dictionary_data
+        
+        
+    def _separate_dictionaey_data(self, dictionary_data: list):
+        data = {"parents": [], "children": []}
+        for user in dictionary_data:
+            if user["children"] and type(user["children"]) == list:
+                for child in user["children"]:
+                    data["children"].append({"name": child["name"], "age": child["age"],
+                                             "parent_number": user["telephone_number"]})
+            user.pop("children", None)
+            data["parents"].append(user)
+        return data
+
+
+    def _validate_dictionary_data(self, dictionary_data: list):
+        for user in dictionary_data.copy():
+            validated_number = self._validate_number(str(user["telephone_number"]))
+            if validated_number is not None:
+                user["telephone_number"] = validated_number
+            else:
+                dictionary_data.remove(user)
+                continue
+            if not self._email_is_valid(user["email"]):
+                dictionary_data.remove(user)
+                continue
+            for another_user in dictionary_data.copy():
+                if user != another_user and (user["telephone_number"] == another_user["telephone_number"] or \
+                   user["email"] == another_user["email"]):
+                    dictionary_data.remove(user)
+        return dictionary_data
+
+
+    def _validate_number(self, number):
+        valid_number = re.sub("[^0-9]", "", number)
+        if len(valid_number) > 9:
+            return valid_number[len(valid_number) - 9:]
+        elif len(valid_number) == 9:
+            return valid_number
+        else:
+            return None
+
+
+    def _email_is_valid(self, email):
+        pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{1,4}\b"
+        return re.match(pattern, email)
 
 
     def _parse_csv(self, path):
@@ -103,7 +151,6 @@ class DataParser:
         for user in csv_data:
             if type(user["children"]) is str:
                 children = []
-                print(user["children"])
                 for child in user["children"].split(","):
                     child_split = child.split(" ")
                     child = {"name": child_split[0], "age": re.sub("[()]", "", child_split[1])}
@@ -130,5 +177,24 @@ class DataParser:
 
 
     def _insert_db(self, dictionary_data):
-        pass
-
+        for parent in dictionary_data["parents"]:
+            self.cursor.execute(f"""
+                                INSERT INTO parents
+                                VALUES(
+                                    '{parent["firstname"]}',
+                                    {int(parent["telephone_number"])},
+                                    '{parent["email"]}',
+                                    '{parent["password"]}',
+                                    '{parent["role"]}',
+                                    '{parent["created_at"]}'
+                                );""")
+        self.connection.commit()
+        for child in dictionary_data["children"]:
+            self.cursor.execute(f"""
+                                INSERT INTO children (name, age, parent_number)
+                                VALUES(
+                                    '{child["name"]}',
+                                    {child["age"]},
+                                    {child["parent_number"]}
+                                );""")
+        self.connection.commit()

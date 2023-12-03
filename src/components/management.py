@@ -23,7 +23,7 @@ class CommandsManager:
         except IndexError:
             raise SystemExit("Please enter your command")
         self.arguments = self._get_arguments(argv)
-        if self.command != "create-database" and not os.path.exists(f"{BASE_DIR}/database/database.db"):
+        if self.command != "create-database" and not os.path.exists(f"{BASE_DIR}/database.sqlite"):
             raise SystemExit("First create the database by calling the create-database command.")
 
 
