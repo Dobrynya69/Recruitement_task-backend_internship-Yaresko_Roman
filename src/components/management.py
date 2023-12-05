@@ -3,12 +3,11 @@ from components.commands import CommandsExecuter
 from pathlib import Path
 
 ALLOWED_COMMANDS = {"print-all-accounts": ["login", "password"],
-                        "print-oldest-account": ["login", "password"],
-                        "group-by-age": ["login", "password"],
-                        "print-children": ["login", "password"],
-                        "find-similar-children-by-age": ["login", "password"],
-                        "create-database": [],
-                        "test": []}
+                    "print-oldest-account": ["login", "password"],
+                    "group-by-age": ["login", "password"],
+                    "print-children": ["login", "password"],
+                    "find-similar-children-by-age": ["login", "password"],
+                    "create-database": []}
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -23,7 +22,7 @@ class CommandsManager:
         except IndexError:
             raise SystemExit("Please enter your command")
         self.arguments = self._get_arguments(argv)
-        if self.command != "create-database" and not os.path.exists(f"{BASE_DIR}/database.sqlite"):
+        if self.command != "create-database" and not os.path.exists(f"{BASE_DIR}/database/database.sqlite"):
             raise SystemExit("First create the database by calling the create-database command.")
 
 
@@ -42,5 +41,5 @@ class CommandsManager:
 
 
     def execute(self):
-        executer = CommandsExecuter(self.command, self.arguments)
+        executer = CommandsExecuter(self.command, self.arguments, "database.sqlite")
         executer.call_command()
