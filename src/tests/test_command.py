@@ -7,6 +7,8 @@ from components import commands
 class TestCommands(unittest.TestCase):
 
     def setUp(self):
+        if os.path.exists(f"{management.BASE_DIR}/database/testing_database.sqlite"):
+            os.remove(f"{management.BASE_DIR}/database/testing_database.sqlite")
         self.connection = sqlite3.connect(f"{management.BASE_DIR}/database/testing_database.sqlite")
         self.cursor = self.connection.cursor()
         self.cursor.execute("""
@@ -76,10 +78,6 @@ class TestCommands(unittest.TestCase):
                                 );""")
         self.connection.commit()
         self.executer = commands.CommandsExecuter("test", {"login": "000000002", "password": "password2"}, "testing_database.sqlite")
-
-
-    def tearDown(self):
-        os.remove(f"{management.BASE_DIR}/database/testing_database.sqlite")
 
 
     def test_print_all_accounts(self):
