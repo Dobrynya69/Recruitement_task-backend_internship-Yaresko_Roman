@@ -1,4 +1,4 @@
-# Recruitement_task-backend_internship-Yaresko_Roman
+# name and surname: Roman Yaresko
 #### To run the script you need to install 'pandas' and 'xmltodict'. All commands must be entered inside the src folder.
 ##### You can run unit tests by typing
 >python -m unittest tests/test_command.py
