@@ -76,8 +76,11 @@ class CommandsExecuter:
             cursor.execute(f"""
                            SELECT name, age FROM children WHERE parent_number = '{self._get_number(cursor)}' ORDER BY name ASC;
                            """)
+            children = cursor.fetchall()
             return_string = ""
-            for child in cursor.fetchall():
+            if len(children) < 1:
+                return_string = "No children"
+            for child in children:
                 return_string += f"{child[0]}, {child[1]}\n"
             return return_string
 
@@ -101,6 +104,8 @@ class CommandsExecuter:
                 else:
                     parent_similar_children[child[2]].append(f"{child[0]}, {child[1]}")
             return_string = ""
+            if len(parent_similar_children) < 1:
+                return_string = "No similar children"
             for key_number in parent_similar_children:
                 cursor.execute(f"""
                                SELECT firstname FROM parents WHERE 
